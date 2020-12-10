@@ -1,0 +1,8 @@
+[package]
+name = "objloader"
+version = "0.1.0"
+authors = ["Shashank Singh <sshashank124@gmail.com>"]
+edition = "2018"
+
+[dependencies]
+graphite = { git = "https://github.com/sshashank124/graphite" }
