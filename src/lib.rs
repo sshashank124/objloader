@@ -82,7 +82,7 @@ impl ObjLoader {
     fn add_normal<'a>(&mut self,
                       tokens: &mut impl Iterator<Item = &'a str>)
                       -> Res<()> {
-        self.tmp_data.n.push(self.to_world * N::a3(parse_f3(tokens)?));
+        self.tmp_data.n.push(self.to_world * N::from(parse_f3(tokens)?));
         Ok(())
     }
 
@@ -101,10 +101,10 @@ impl ObjLoader {
         let v = vertices?;
 
         match v.len() {
-            3 => self.faces.push(A3(v[0], v[1], v[2])),
+            3 => self.faces.push([v[0], v[1], v[2]].into()),
             4 => {
-                self.faces.push(A3(v[0], v[1], v[2]));
-                self.faces.push(A3(v[0], v[2], v[3]));
+                self.faces.push([v[0], v[1], v[2]].into());
+                self.faces.push([v[0], v[2], v[3]].into());
             }
             _ => return Err("unexpected number of vertices".into()),
         }
@@ -142,11 +142,11 @@ fn parse_index<'a>(tkns: &mut impl Iterator<Item = &'a str>,
 }
 
 fn parse_f3<'a>(tokens: &mut impl Iterator<Item = &'a str>) -> Res<F3> {
-    Ok(A3(parse(tokens)?, parse(tokens)?, parse(tokens)?))
+    Ok([parse(tokens)?, parse(tokens)?, parse(tokens)?].into())
 }
 
 fn parse_f2<'a>(tokens: &mut impl Iterator<Item = &'a str>) -> Res<F2> {
-    Ok(A2(parse(tokens)?, parse(tokens)?))
+    Ok([parse(tokens)?, parse(tokens)?].into())
 }
 
 fn parse<'a, S>(tokens: &mut impl Iterator<Item = &'a str>) -> Res<S>
