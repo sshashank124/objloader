@@ -68,7 +68,7 @@ impl ObjLoader {
     fn add_point<'a>(&mut self,
                      tokens: &mut impl Iterator<Item = &'a str>)
                      -> Res<()> {
-        self.tmp_data.p.push(self.to_world * P(parse_f3(tokens)?));
+        self.tmp_data.p.push(self.to_world * P::from(parse_f3(tokens)?));
         Ok(())
     }
 
