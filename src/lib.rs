@@ -101,10 +101,10 @@ impl ObjLoader {
         let v = vertices?;
 
         match v.len() {
-            3 => self.faces.push([v[0], v[1], v[2]].into()),
+            3 => self.faces.push(A3(v[0], v[1], v[2])),
             4 => {
-                self.faces.push([v[0], v[1], v[2]].into());
-                self.faces.push([v[0], v[2], v[3]].into());
+                self.faces.push(A3(v[0], v[1], v[2]));
+                self.faces.push(A3(v[0], v[2], v[3]));
             }
             _ => return Err("unexpected number of vertices".into()),
         }
@@ -142,11 +142,11 @@ fn parse_index<'a>(tkns: &mut impl Iterator<Item = &'a str>,
 }
 
 fn parse_f3<'a>(tokens: &mut impl Iterator<Item = &'a str>) -> Res<F3> {
-    Ok([parse(tokens)?, parse(tokens)?, parse(tokens)?].into())
+    Ok(A3(parse(tokens)?, parse(tokens)?, parse(tokens)?))
 }
 
 fn parse_f2<'a>(tokens: &mut impl Iterator<Item = &'a str>) -> Res<F2> {
-    Ok([parse(tokens)?, parse(tokens)?].into())
+    Ok(A2(parse(tokens)?, parse(tokens)?))
 }
 
 fn parse<'a, S>(tokens: &mut impl Iterator<Item = &'a str>) -> Res<S>
