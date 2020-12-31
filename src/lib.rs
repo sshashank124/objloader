@@ -1,11 +1,12 @@
 use std::collections::HashMap;
+use std::fs::File;
 use std::io::{BufRead, BufReader};
+
+use anyhow::*;
 
 use graphite::*;
 
 pub type Face = A3<I>;
-
-type Res<T> = Result<T, String>;
 
 #[derive(Default)]
 pub struct MeshData {
@@ -14,11 +15,10 @@ pub struct MeshData {
     pub uv: Vec<F2>,
 }
 
-pub fn load_from_file(file: &str, to_world: T) -> Res<(MeshData, Vec<Face>)> {
-    let f = std::fs::File::open(file).map_err(|e| {
-                                         format!("Error opening OBJ file: {}",
-                                                 e)
-                                     })?;
+pub fn load_from_file(file: &str, to_world: T) -> Result<(MeshData, Vec<Face>)>
+{
+    let f = File::open(file)
+                 .with_context(|| format!("Error opening OBJ file: {}", file))?;
     ObjLoader::new(to_world).load(BufReader::new(f))
 }
 
@@ -43,12 +43,9 @@ impl ObjLoader {
         ObjLoader { to_world, ..Default::default() }
     }
 
-    fn load(mut self, mut buf: impl BufRead) -> Res<(MeshData, Vec<Face>)> {
+    fn load(mut self, mut buf: impl BufRead) -> Result<(MeshData, Vec<Face>)> {
         let mut line = String::with_capacity(120);
-        while buf.read_line(&mut line)
-                 .map_err(|e| format!("Error reading line: {}", e))?
-              > 0
-        {
+        while buf.read_line(&mut line).context("Error reading line")?  > 0 {
             let mut tokens = line[..].split_whitespace();
 
             match tokens.next() {
@@ -65,30 +62,21 @@ impl ObjLoader {
         Ok((self.obj_data, self.faces))
     }
 
-    fn add_point<'a>(&mut self,
-                     tokens: &mut impl Iterator<Item = &'a str>)
-                     -> Res<()> {
-        self.tmp_data.p.push(self.to_world * P::from(parse_f3(tokens)?));
-        Ok(())
-    }
+    fn add_point<'a>(&mut self, tokens: &mut impl Iterator<Item = &'a str>)
+        -> Result<()>
+    { Ok(self.tmp_data.p.push(self.to_world * P::from(parse_f3(tokens)?))) }
 
-    fn add_uv<'a>(&mut self,
-                  tokens: &mut impl Iterator<Item = &'a str>)
-                  -> Res<()> {
-        self.tmp_data.uv.push(parse_f2(tokens)?);
-        Ok(())
-    }
+    fn add_uv<'a>(&mut self, tokens: &mut impl Iterator<Item = &'a str>)
+        -> Result<()>
+    { Ok(self.tmp_data.uv.push(parse_f2(tokens)?)) }
 
-    fn add_normal<'a>(&mut self,
-                      tokens: &mut impl Iterator<Item = &'a str>)
-                      -> Res<()> {
-        self.tmp_data.n.push(self.to_world * N::from(parse_f3(tokens)?));
-        Ok(())
-    }
+    fn add_normal<'a>(&mut self, tokens: &mut impl Iterator<Item = &'a str>)
+        -> Result<()>
+    { Ok(self.tmp_data.n.push(self.to_world * N::from(parse_f3(tokens)?))) }
 
-    fn add_face<'a>(&mut self,
-                    tokens: &mut impl Iterator<Item = &'a str>)
-                    -> Res<()> {
+    fn add_face<'a>(&mut self, tokens: &mut impl Iterator<Item = &'a str>)
+        -> Result<()>
+    {
         let vertices: Result<Vec<I>, _> =
             tokens.map(|st| match self.parse_vertex(st) {
                       Ok(v) => match self.vertex_map.get(&v) {
@@ -106,7 +94,7 @@ impl ObjLoader {
                 self.faces.push(A3(v[0], v[1], v[2]));
                 self.faces.push(A3(v[0], v[2], v[3]));
             }
-            _ => return Err("unexpected number of vertices".into()),
+            _ => bail!("unexpected number of vertices"),
         }
         Ok(())
     }
@@ -124,37 +112,29 @@ impl ObjLoader {
         n
     }
 
-    fn parse_vertex(&mut self, token: &str) -> Res<Vertex> {
+    fn parse_vertex(&mut self, token: &str) -> Result<Vertex> {
         let mut tokens = token.split('/');
         Ok(Vertex {
             p: parse_index(&mut tokens, self.tmp_data.p.len())
-                .map_err(|e| format!("index for position is required: {}", e))?,
+                .context("index for position is required")?,
             t: parse_index(&mut tokens, self.tmp_data.uv.len()).unwrap_or(-1),
             n: parse_index(&mut tokens, self.tmp_data.n.len()).unwrap_or(-1),
         })
     }
 }
 
-fn parse_index<'a>(tkns: &mut impl Iterator<Item = &'a str>,
-                   n: usize)
-                   -> Res<I> {
-    parse(tkns).map(|i: I| if i > 0 { i - 1 } else { i + n as I })
-}
+fn parse_index<'a>(tkns: &mut impl Iterator<Item = &'a str>, n: usize)
+    -> Result<I>
+{ parse(tkns).map(|i: I| if i > 0 { i - 1 } else { i + n as I }) }
 
-fn parse_f3<'a>(tokens: &mut impl Iterator<Item = &'a str>) -> Res<F3> {
-    Ok(A3(parse(tokens)?, parse(tokens)?, parse(tokens)?))
-}
+fn parse_f3<'a>(tokens: &mut impl Iterator<Item = &'a str>) -> Result<F3>
+{ Ok(A3(parse(tokens)?, parse(tokens)?, parse(tokens)?)) }
 
-fn parse_f2<'a>(tokens: &mut impl Iterator<Item = &'a str>) -> Res<F2> {
-    Ok(A2(parse(tokens)?, parse(tokens)?))
-}
+fn parse_f2<'a>(tokens: &mut impl Iterator<Item = &'a str>) -> Result<F2>
+{ Ok(A2(parse(tokens)?, parse(tokens)?)) }
 
-fn parse<'a, S>(tokens: &mut impl Iterator<Item = &'a str>) -> Res<S>
+fn parse<'a, S>(tokens: &mut impl Iterator<Item = &'a str>) -> Result<S>
     where S: std::str::FromStr,
-          <S as std::str::FromStr>::Err: std::fmt::Display
-{
-    tokens.next()
-          .ok_or("missing scalar")?
-          .parse::<S>()
-          .map_err(|e| format!("malformed scalar: {}", e))
-}
+          <S as std::str::FromStr>::Err: std::error::Error + Sync + Send
+                                       + 'static
+{ Ok(tokens.next().context("missing scalar")?.parse::<S>()?) }
