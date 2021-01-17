@@ -64,7 +64,7 @@ impl ObjLoader {
 
     fn add_point<'a>(&mut self, tokens: &mut impl Iterator<Item = &'a str>)
         -> Result<()>
-    { Ok(self.tmp_data.p.push(self.to_world * P::from(parse_f3(tokens)?))) }
+    { Ok(self.tmp_data.p.push(self.to_world * conv!(parse_f3(tokens)? => P))) }
 
     fn add_uv<'a>(&mut self, tokens: &mut impl Iterator<Item = &'a str>)
         -> Result<()>
@@ -72,7 +72,7 @@ impl ObjLoader {
 
     fn add_normal<'a>(&mut self, tokens: &mut impl Iterator<Item = &'a str>)
         -> Result<()>
-    { Ok(self.tmp_data.n.push(self.to_world * N::from(parse_f3(tokens)?))) }
+    { Ok(self.tmp_data.n.push(self.to_world * conv!(parse_f3(tokens)? => V => N))) }
 
     fn add_face<'a>(&mut self, tokens: &mut impl Iterator<Item = &'a str>)
         -> Result<()>
